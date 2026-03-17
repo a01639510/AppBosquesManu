@@ -1,0 +1,6 @@
+@import "tailwindcss";
+
+body {
+  background-color: #F0FDF4; /* A very light green */
+  background-image: url('https://www.transparenttextures.com/patterns/natural-paper.png');
+}
