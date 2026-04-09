@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { User, Incident } from '../types';
 import ErrorBoundary from '../components/ErrorBoundary';
 
@@ -22,6 +23,7 @@ export default function AdminDashboard() {
   const [analytics, setAnalytics] = useState<ScanAnalytic[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchAllData = async () => {
@@ -48,7 +50,6 @@ export default function AdminDashboard() {
         setIncidents(incidentsData);
         setNotifications(notificationsData);
         setAnalytics(analyticsData);
-
       } catch (err: any) {
         setError(err.message);
       } finally {
@@ -59,8 +60,11 @@ export default function AdminDashboard() {
     fetchAllData();
   }, []);
 
-  if (loading) return <p>Loading data...</p>;
-  if (error) return <p className="text-red-500">{error}</p>;
+  const handleLogout = () => {
+    localStorage.removeItem('userRole');
+    localStorage.removeItem('loggedInUser');
+    navigate('/');
+  };
 
   const handleNotificationSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,9 +74,9 @@ export default function AdminDashboard() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newNotification),
       });
+
       if (response.ok) {
         setNewNotification({ title: '', message: '' });
-        // Refresh notifications list
         const res = await fetch('/api/notifications');
         const data = await res.json();
         setNotifications(data);
@@ -85,9 +89,47 @@ export default function AdminDashboard() {
     }
   };
 
+  if (loading) return <p>Loading data...</p>;
+  if (error) return <p className="text-red-500">{error}</p>;
+
+  const totalUsers = users.length;
+  const totalIncidents = incidents.length;
+  const totalNotifications = notifications.length;
+  const totalScans = analytics.reduce((acc, analytic) => acc + Number(analytic.scanCount), 0);
+
   return (
     <div className="max-w-6xl mx-auto p-8">
-      <h2 className="text-3xl font-bold mb-6 text-center text-green-800">Panel de Administración</h2>
+      <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+        <h2 className="text-3xl font-bold text-center text-green-800">Panel de Administración</h2>
+        <button
+          onClick={handleLogout}
+          className="bg-red-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-red-700 transition-colors"
+        >
+          Cerrar sesión
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
+        <div className="p-6 bg-white/80 backdrop-blur-sm rounded-xl shadow-lg border border-green-100">
+          <p className="text-sm uppercase tracking-wide text-gray-500 font-semibold">Usuarios registrados</p>
+          <p className="text-4xl font-black text-green-800 mt-2">{totalUsers}</p>
+        </div>
+
+        <div className="p-6 bg-white/80 backdrop-blur-sm rounded-xl shadow-lg border border-red-100">
+          <p className="text-sm uppercase tracking-wide text-gray-500 font-semibold">Incidentes reportados</p>
+          <p className="text-4xl font-black text-red-600 mt-2">{totalIncidents}</p>
+        </div>
+
+        <div className="p-6 bg-white/80 backdrop-blur-sm rounded-xl shadow-lg border border-orange-100">
+          <p className="text-sm uppercase tracking-wide text-gray-500 font-semibold">Notificaciones enviadas</p>
+          <p className="text-4xl font-black text-orange-500 mt-2">{totalNotifications}</p>
+        </div>
+
+        <div className="p-6 bg-white/80 backdrop-blur-sm rounded-xl shadow-lg border border-blue-100">
+          <p className="text-sm uppercase tracking-wide text-gray-500 font-semibold">Escaneos totales</p>
+          <p className="text-4xl font-black text-blue-600 mt-2">{totalScans}</p>
+        </div>
+      </div>
 
       <div className="p-6 bg-white/80 backdrop-blur-sm rounded-xl shadow-lg mb-8">
         <h3 className="text-2xl font-bold mb-4 text-green-800">Usuarios Registrados</h3>
@@ -120,15 +162,15 @@ export default function AdminDashboard() {
       <div className="p-6 bg-white/80 backdrop-blur-sm rounded-xl shadow-lg mb-8">
         <h3 className="text-2xl font-bold mb-4 text-green-800">Crear Notificación</h3>
         <form onSubmit={handleNotificationSubmit} className="space-y-4">
-          <input 
-            type="text" 
-            placeholder="Título" 
-            value={newNotification.title} 
-            onChange={(e) => setNewNotification({ ...newNotification, title: e.target.value })} 
+          <input
+            type="text"
+            placeholder="Título"
+            value={newNotification.title}
+            onChange={(e) => setNewNotification({ ...newNotification, title: e.target.value })}
             required
             className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
           />
-          <textarea 
+          <textarea
             placeholder="Mensaje"
             value={newNotification.message}
             onChange={(e) => setNewNotification({ ...newNotification, message: e.target.value })}
@@ -136,7 +178,12 @@ export default function AdminDashboard() {
             rows={3}
             className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
           />
-          <button type="submit" className="w-full bg-orange-500 text-white px-4 py-3 rounded-lg font-semibold hover:bg-orange-600 transition-colors">Enviar Notificación</button>
+          <button
+            type="submit"
+            className="w-full bg-orange-500 text-white px-4 py-3 rounded-lg font-semibold hover:bg-orange-600 transition-colors"
+          >
+            Enviar Notificación
+          </button>
         </form>
       </div>
 
