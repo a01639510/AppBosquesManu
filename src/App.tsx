@@ -6,6 +6,7 @@
 import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
 import { useEffect } from 'react';
 import Header from './components/Header';
+import ProtectedRoute from './components/ProtectedRoute';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import ParamedicDashboard from './pages/ParamedicDashboard';
@@ -25,17 +26,41 @@ function AppContent() {
   }, [navigate]);
 
   return (
-      <main className="p-4">
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/paramedic" element={<ParamedicDashboard />} />
-          <Route path="/admin" element={<AdminDashboard />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/qr/:userId" element={<QrCode />} />
-          <Route path="/dashboard" element={<UserDashboard />} />
-        </Routes>
-      </main>
+    <main className="p-4">
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/qr/:userId" element={<QrCode />} />
+
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute role="visitor">
+              <UserDashboard />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/paramedic"
+          element={
+            <ProtectedRoute role="paramedic">
+              <ParamedicDashboard />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/admin"
+          element={
+            <ProtectedRoute role="admin">
+              <AdminDashboard />
+            </ProtectedRoute>
+          }
+        />
+      </Routes>
+    </main>
   );
 }
 
