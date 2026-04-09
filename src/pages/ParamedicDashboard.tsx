@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom'; 
 import { Html5QrcodeScanner } from 'html5-qrcode';
 import ErrorBoundary from '../components/ErrorBoundary';
 import { User } from '../types';
@@ -19,7 +20,16 @@ export default function ParamedicDashboard() {
   const [incidentNotes, setIncidentNotes] = useState('');
   const [isSubmittingIncident, setIsSubmittingIncident] = useState(false);
 
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    localStorage.removeItem('userRole');
+    localStorage.removeItem('loggedInUser');
+    navigate('/');
+  };
+
   useEffect(() => {
+      
     // Load users from local storage on component mount
     const localUsers = localStorage.getItem('syncedUsers');
     if (localUsers) {
@@ -137,14 +147,22 @@ export default function ParamedicDashboard() {
     <div className="max-w-5xl mx-auto p-4 md:p-8">
       <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
         <h2 className="text-4xl font-black text-green-900 tracking-tight">Panel Paramédico</h2>
-        <button 
+        <div className="flex flex-col sm:flex-row gap-3">
+            <button 
           onClick={handleSync}
           disabled={isSyncing}
           className="flex items-center gap-2 bg-white border-2 border-green-600 text-green-700 px-6 py-2 rounded-2xl font-bold hover:bg-green-50 transition-all disabled:opacity-50 shadow-sm"
-        >
+            >
           <RefreshCw size={20} className={isSyncing ? 'animate-spin' : ''} />
           {isSyncing ? 'Sincronizando...' : 'Sincronizar Datos'}
         </button>
+            <button
+                onClick={handleLogout}
+                className="bg-red-600 text-white px-6 py-2 rounded-2xl font-bold hover:bg-red-700 transition-all shadow-sm"
+                >
+                Cerrar sesión
+            </button>
+        </div>
       </div>
 
       <div className="grid lg:grid-cols-12 gap-8">
