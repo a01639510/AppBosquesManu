@@ -1,5 +1,5 @@
 import express from 'express';
-import db from './db/database.ts';
+import db from './db/firebase.ts';
 import crypto from 'crypto';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
@@ -15,8 +15,19 @@ async function startServer() {
     res.json({ status: 'ok' });
   });
 
-  // User registration
-  app.post('/api/register', (req, res) => {
+  // Simple Firebase/Firestore test route
+  app.get('/api/firebase-test', async (req, res) => {
+    try {
+      await db.collection('test').doc('doc1').set({ mensaje: 'Conexion exitosa con Firestore', estado: 'ok' });
+      res.send('Datos guardados correctamente');
+    } catch (error) {
+      console.error('Firebase test error:', error);
+      res.status(500).send('Error al guardar datos');
+    }
+  });
+
+  // User registration (stores user in Firestore)
+  app.post('/api/register', async (req, res) => {
     const {
       fullName,
       email,
@@ -29,46 +40,47 @@ async function startServer() {
       termsAccepted,
     } = req.body;
 
-    // Basic validation
     if (!fullName || !email || !phone || !emergencyContactName || !emergencyContactPhone || !bloodType || !termsAccepted) {
       return res.status(400).json({ message: 'Missing required fields' });
     }
 
     try {
+      // Check if email already exists
+      const existing = await db.collection('users').where('email', '==', email).limit(1).get();
+      if (!existing.empty) {
+        return res.status(409).json({ message: 'Email already registered' });
+      }
+
       const id = crypto.randomUUID();
-      const stmt = db.prepare(`
-        INSERT INTO users (id, fullName, email, phone, emergencyContactName, emergencyContactPhone, bloodType, allergies, medicalConditions, termsAccepted)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `);
-      
-      stmt.run(
+      const userDoc = db.collection('users').doc(id);
+      await userDoc.set({
         id,
         fullName,
+        fullNameLower: String(fullName).toLowerCase(),
         email,
         phone,
         emergencyContactName,
         emergencyContactPhone,
         bloodType,
-        JSON.stringify(allergies || []),
-        JSON.stringify(medicalConditions || []),
-        termsAccepted ? 1 : 0
-      );
+        allergies: allergies || [],
+        medicalConditions: medicalConditions || [],
+        termsAccepted: !!termsAccepted,
+        createdAt: new Date().toISOString(),
+      });
 
       res.status(201).json({ message: 'User registered successfully', userId: id });
-    } catch (error: any) {
-      if (error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
-        return res.status(409).json({ message: 'Email already registered' });
-      }
+    } catch (error) {
       console.error('Registration error:', error);
       res.status(500).json({ message: 'An error occurred during registration' });
     }
   });
 
   // Get all users (for paramedic offline sync)
-  app.get('/api/users', (req, res) => {
+  app.get('/api/users', async (req, res) => {
     try {
-      const stmt = db.prepare('SELECT * FROM users');
-      const users = stmt.all();
+      const snap = await db.collection('users').orderBy('createdAt', 'asc').get();
+      const users: any[] = [];
+      snap.forEach((doc) => users.push(doc.data()));
       res.json(users);
     } catch (error) {
       console.error('Failed to fetch users:', error);
@@ -77,10 +89,11 @@ async function startServer() {
   });
 
   // Get all incidents
-  app.get('/api/incidents', (req, res) => {
+  app.get('/api/incidents', async (req, res) => {
     try {
-      const stmt = db.prepare('SELECT * FROM incidents');
-      const incidents = stmt.all();
+      const snap = await db.collection('incidents').orderBy('timestamp', 'desc').get();
+      const incidents: any[] = [];
+      snap.forEach((doc) => incidents.push(doc.data()));
       res.json(incidents);
     } catch (error) {
       console.error('Failed to fetch incidents:', error);
@@ -89,33 +102,26 @@ async function startServer() {
   });
 
   // Create a new incident
-  app.post('/api/incidents', (req, res) => {
+  app.post('/api/incidents', async (req, res) => {
     const { userId, paramedicId, notes, location } = req.body;
 
     if (!userId || !paramedicId || !notes) {
-        return res.status(400).json({ message: 'Missing required fields' });
+      return res.status(400).json({ message: 'Missing required fields' });
     }
 
     try {
-        const id = crypto.randomUUID();
-        const timestamp = new Date().toISOString();
-
-        const stmt = db.prepare(`
-            INSERT INTO incidents (id, userId, paramedicId, timestamp, location, notes)
-            VALUES (?, ?, ?, ?, ?, ?)
-        `);
-
-        stmt.run(id, userId, paramedicId, timestamp, location || null, notes);
-
-        res.status(201).json({ message: 'Incident created successfully', incidentId: id });
+      const id = crypto.randomUUID();
+      const timestamp = new Date().toISOString();
+      await db.collection('incidents').doc(id).set({ id, userId, paramedicId, timestamp, location: location || null, notes });
+      res.status(201).json({ message: 'Incident created successfully', incidentId: id });
     } catch (error) {
-        console.error('Failed to create incident:', error);
-        res.status(500).json({ message: 'Failed to create incident' });
+      console.error('Failed to create incident:', error);
+      res.status(500).json({ message: 'Failed to create incident' });
     }
   });
 
   // Log a paramedic scan
-  app.post('/api/scans', (req, res) => {
+  app.post('/api/scans', async (req, res) => {
     const { userId, paramedicId } = req.body;
     if (!userId || !paramedicId) {
       return res.status(400).json({ message: 'Missing required fields' });
@@ -123,11 +129,7 @@ async function startServer() {
     try {
       const id = crypto.randomUUID();
       const timestamp = new Date().toISOString();
-      const stmt = db.prepare(`
-        INSERT INTO paramedic_scans (id, paramedicId, userId, timestamp)
-        VALUES (?, ?, ?, ?)
-      `);
-      stmt.run(id, paramedicId, userId, timestamp);
+      await db.collection('paramedic_scans').doc(id).set({ id, paramedicId, userId, timestamp });
       res.status(201).json({ message: 'Scan logged successfully' });
     } catch (error) {
       console.error('Failed to log scan:', error);
@@ -137,15 +139,15 @@ async function startServer() {
 
   // Get scan analytics
   // Find user by name and phone (case-insensitive, accent-insensitive)
-  app.post('/api/login', (req, res) => {
+  app.post('/api/login', async (req, res) => {
     const { email, phone } = req.body;
     if (!email || !phone) {
       return res.status(400).json({ message: 'Correo y teléfono son requeridos' });
     }
     try {
-      const stmt = db.prepare('SELECT * FROM users WHERE email = ? AND phone = ?');
-      const user = stmt.get(email, phone);
-      if (user) {
+      const snap = await db.collection('users').where('email', '==', email).where('phone', '==', phone).limit(1).get();
+      if (!snap.empty) {
+        const user = snap.docs[0].data();
         res.json(user);
       } else {
         res.status(401).json({ message: 'Credenciales inválidas' });
@@ -156,22 +158,18 @@ async function startServer() {
     }
   });
 
-  app.get('/api/users/find', (req, res) => {
-    const { fullName, phone } = req.query;
+  app.get('/api/users/find', async (req, res) => {
+    const { fullName, phone } = req.query as { fullName?: string; phone?: string };
 
     if (!fullName || !phone) {
       return res.status(400).json({ message: 'Nombre y teléfono son requeridos' });
     }
 
     try {
-      // This is a simplified search. A real-world app should use a more robust search like FTS5 or a proper database search function.
-      const stmt = db.prepare(`
-        SELECT id FROM users WHERE REPLACE(LOWER(fullName), 'á', 'a') = REPLACE(LOWER(?), 'á', 'a') AND phone = ?
-      `);
-      const user = stmt.get(String(fullName).toLowerCase(), phone);
-
-      if (user) {
-        res.json({ userId: user.id });
+      const nameLower = String(fullName).toLowerCase();
+      const snap = await db.collection('users').where('fullNameLower', '==', nameLower).where('phone', '==', phone).limit(1).get();
+      if (!snap.empty) {
+        res.json({ userId: snap.docs[0].data().id });
       } else {
         res.status(404).json({ message: 'Usuario no encontrado' });
       }
@@ -182,10 +180,11 @@ async function startServer() {
   });
 
   // Notification Management
-  app.get('/api/notifications', (req, res) => {
+  app.get('/api/notifications', async (req, res) => {
     try {
-      const stmt = db.prepare('SELECT * FROM notifications ORDER BY createdAt DESC');
-      const notifications = stmt.all();
+      const snap = await db.collection('notifications').orderBy('createdAt', 'desc').get();
+      const notifications: any[] = [];
+      snap.forEach((doc) => notifications.push(doc.data()));
       res.json(notifications);
     } catch (error) {
       console.error('Failed to fetch notifications:', error);
@@ -193,7 +192,7 @@ async function startServer() {
     }
   });
 
-  app.post('/api/notifications', (req, res) => {
+  app.post('/api/notifications', async (req, res) => {
     const { title, message } = req.body;
     if (!title || !message) {
       return res.status(400).json({ message: 'Título y mensaje son requeridos' });
@@ -201,11 +200,7 @@ async function startServer() {
     try {
       const id = crypto.randomUUID();
       const createdAt = new Date().toISOString();
-      const stmt = db.prepare(`
-        INSERT INTO notifications (id, title, message, createdAt)
-        VALUES (?, ?, ?, ?)
-      `);
-      stmt.run(id, title, message, createdAt);
+      await db.collection('notifications').doc(id).set({ id, title, message, createdAt });
       res.status(201).json({ message: 'Notificación creada con éxito' });
     } catch (error) {
       console.error('Failed to create notification:', error);
@@ -213,15 +208,15 @@ async function startServer() {
     }
   });
 
-  app.get('/api/analytics/scans', (req, res) => {
+  app.get('/api/analytics/scans', async (req, res) => {
     try {
-      const stmt = db.prepare(`
-        SELECT paramedicId, COUNT(id) as scanCount
-        FROM paramedic_scans
-        GROUP BY paramedicId
-        ORDER BY scanCount DESC
-      `);
-      const analytics = stmt.all();
+      const snap = await db.collection('paramedic_scans').get();
+      const counts: Record<string, number> = {};
+      snap.forEach((doc) => {
+        const data = doc.data();
+        counts[data.paramedicId] = (counts[data.paramedicId] || 0) + 1;
+      });
+      const analytics = Object.entries(counts).map(([paramedicId, scanCount]) => ({ paramedicId, scanCount })).sort((a, b) => b.scanCount - a.scanCount);
       res.json(analytics);
     } catch (error) {
       console.error('Failed to fetch scan analytics:', error);
