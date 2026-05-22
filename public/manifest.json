@@ -1,7 +1,7 @@
 {
-  "name": "Mas Bosques Manu - Emergency Response",
+  "name": "Mas Bosque Manu - Emergency Response",
   "short_name": "MBM-ER",
-  "description": "Emergency response app for Mas Bosques Manu.",
+  "description": "Emergency response app for Mas Bosque Manu.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

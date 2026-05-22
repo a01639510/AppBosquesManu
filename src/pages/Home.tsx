@@ -7,7 +7,7 @@ export default function Home() {
     <div className="max-w-4xl mx-auto p-6 md:p-12">
       <div className="text-center mb-12">
         <h1 className="text-5xl md:text-6xl font-extrabold mb-4 text-green-900 tracking-tight">
-          Mas Bosques Manu
+          Mas Bosque Manu
         </h1>
         <p className="text-xl text-green-700 font-medium">Sistema de Respuesta a Emergencias</p>
       </div>

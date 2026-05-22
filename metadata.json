@@ -1,5 +1,5 @@
 {
-  "name": "Mas Bosques Manu - Emergency Response",
-  "description": "An application for Mas Bosques Manu to manage visitor registration, provide offline medical information for paramedics, and handle emergency incidents in low-connectivity areas.",
+  "name": "Mas Bosque Manu - Emergency Response",
+  "description": "An application for Mas Bosque Manu to manage visitor registration, provide offline medical information for paramedics, and handle emergency incidents in low-connectivity areas.",
   "requestFramePermissions": ["geolocation"]
 }

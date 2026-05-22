@@ -1,6 +1,6 @@
 import { openDB } from 'idb';
 
-const DB_NAME = 'mas-bosques-db';
+const DB_NAME = 'mas-bosque-db';
 const DB_VERSION = 1;
 const OUTBOX_STORE = 'incident-outbox';
 

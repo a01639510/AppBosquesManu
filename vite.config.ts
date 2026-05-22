@@ -22,7 +22,7 @@ export default defineConfig(({mode}) => {
         manifest: {
           name: 'MBM-ER',
           short_name: 'MBM-ER',
-          description: 'Emergency response app for Mas Bosques Manu.',
+          description: 'Emergency response app for Mas Bosque Manu.',
           theme_color: '#ffffff',
           icons: [
             {

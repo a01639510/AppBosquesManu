@@ -8,7 +8,7 @@ export default function Header() {
           <div className="w-10 h-10 bg-green-700 rounded-xl flex items-center justify-center text-white font-black text-xl group-hover:rotate-6 transition-transform">
             M
           </div>
-          <span className="text-xl font-black text-green-900 tracking-tight">Mas Bosques Manu</span>
+          <span className="text-xl font-black text-green-900 tracking-tight">Mas Bosque Manu</span>
         </Link>
         <nav>
           <Link to="/login" className="text-sm font-bold text-gray-500 hover:text-green-700 transition-colors uppercase tracking-widest">Personal</Link>

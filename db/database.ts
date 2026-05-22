@@ -1,6 +1,6 @@
 import Database from 'better-sqlite3';
 
-const db = new Database('mas_bosques.db', { verbose: console.log });
+const db = new Database('mas_bosque.db', { verbose: console.log });
 
 function initializeDB() {
   db.exec(`
@@ -46,6 +46,8 @@ function initializeDB() {
   console.log('Database initialized.');
 }
 
-initializeDB();
-
+// NOTE: this project now uses Firestore. Keep the SQLite initialization
+// function available for local/offline usage, but do not run it on import
+// to avoid creating or modifying the SQLite DB on every startup.
+export { initializeDB };
 export default db;

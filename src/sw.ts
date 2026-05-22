@@ -66,7 +66,7 @@ async function syncIncidents() {
 // Minimal IDB helper to avoid importing the whole library into the SW
 function openDb() {
   return new Promise<IDBDatabase>((resolve, reject) => {
-    const request = indexedDB.open('mas-bosques-db', 1);
+    const request = indexedDB.open('mas-bosque-db', 1);
     request.onerror = () => reject(request.error);
     request.onsuccess = () => resolve(request.result);
     request.onupgradeneeded = (event) => {
