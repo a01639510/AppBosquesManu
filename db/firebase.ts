@@ -3,7 +3,11 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-if (!admin.apps.length) {
+let _db: FirebaseFirestore.Firestore | null = null;
+
+function initialize() {
+  if (_db) return;
+
   let serviceAccount: object;
 
   if (process.env.FIREBASE_SERVICE_ACCOUNT) {
@@ -22,11 +26,25 @@ if (!admin.apps.length) {
     serviceAccount = JSON.parse(raw);
   }
 
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount as admin.ServiceAccount),
-  });
-  console.log('Initialized Firebase Admin and Firestore');
+  if (!admin.apps.length) {
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount as admin.ServiceAccount),
+    });
+    console.log('Initialized Firebase Admin and Firestore');
+  }
+
+  _db = admin.firestore();
 }
 
-const db = admin.firestore();
+// Lazy proxy: initialize() runs on first property access, not at module load time.
+// If credentials are missing the error is thrown inside route try-catch blocks
+// (returning JSON 500) instead of crashing the whole module (returning plain-text Vercel error).
+const db = new Proxy({} as FirebaseFirestore.Firestore, {
+  get(_target, prop) {
+    initialize();
+    const val = (_db as any)[prop];
+    return typeof val === 'function' ? val.bind(_db) : val;
+  },
+});
+
 export default db;
