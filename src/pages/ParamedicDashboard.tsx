@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom'; 
 import { Html5QrcodeScanner } from 'html5-qrcode';
 import ErrorBoundary from '../components/ErrorBoundary';
@@ -19,6 +19,9 @@ export default function ParamedicDashboard() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [incidentNotes, setIncidentNotes] = useState('');
   const [isSubmittingIncident, setIsSubmittingIncident] = useState(false);
+
+  const usersRef = useRef<ParamedicUser[]>([]);
+  usersRef.current = users;
 
   const navigate = useNavigate();
 
@@ -46,7 +49,19 @@ export default function ParamedicDashboard() {
 
     function onScanSuccess(decodedText: string) {
       scanner.clear();
-      findUser(decodedText);
+      const user = usersRef.current.find(u => u.id === decodedText);
+      if (user) {
+        setScannedUser(user);
+        setError('');
+        fetch('/api/scans', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: user.id, paramedicId: 'paramedic-001' }),
+        }).catch(err => console.error('Failed to log scan:', err));
+      } else {
+        setScannedUser(null);
+        setError('Usuario no encontrado en los datos locales. Por favor, sincronice los datos.');
+      }
     }
 
     scanner.render(onScanSuccess, undefined);
@@ -54,7 +69,7 @@ export default function ParamedicDashboard() {
     return () => {
       scanner.clear().catch(err => console.error('Failed to clear scanner', err));
     };
-  }, [users]);
+  }, []);
 
   const handleSync = async () => {
     setIsSyncing(true);
@@ -77,23 +92,6 @@ export default function ParamedicDashboard() {
       setError(err.message);
     } finally {
       setIsSyncing(false);
-    }
-  };
-
-  const findUser = (userId: string) => {
-    const user = users.find(u => u.id === userId);
-    if (user) {
-      setScannedUser(user);
-      setError('');
-      // Log the scan on the server
-      fetch('/api/scans', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.id, paramedicId: 'paramedic-001' /* Mock ID */ })
-      }).catch(err => console.error('Failed to log scan:', err));
-    } else {
-      setScannedUser(null);
-      setError('Usuario no encontrado en los datos locales. Por favor, sincronice los datos.');
     }
   };
 
