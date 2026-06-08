@@ -81,8 +81,12 @@ export default function ParamedicDashboard() {
       
       const parsedData: ParamedicUser[] = data.map(user => ({
         ...user,
-        allergies: JSON.parse(user.allergies as unknown as string || '[]'),
-        medicalConditions: JSON.parse(user.medicalConditions as unknown as string || '[]'),
+        allergies: Array.isArray(user.allergies)
+          ? user.allergies
+          : JSON.parse((user.allergies as unknown as string) || '[]'),
+        medicalConditions: Array.isArray(user.medicalConditions)
+          ? user.medicalConditions
+          : JSON.parse((user.medicalConditions as unknown as string) || '[]'),
       }));
 
       localStorage.setItem('syncedUsers', JSON.stringify(parsedData));
